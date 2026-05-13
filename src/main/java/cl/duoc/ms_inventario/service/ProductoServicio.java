@@ -18,10 +18,14 @@ import cl.duoc.ms_inventario.dto.AgregarProductoDto;
 import cl.duoc.ms_inventario.dto.ProductoRespuestaDto;
 import cl.duoc.ms_inventario.model.Producto;
 import cl.duoc.ms_inventario.repository.ProductoRepositorio;
+import lombok.Data;
+
 
 
 
 @Service
+@Data
+
 public class ProductoServicio {
 
     @Autowired

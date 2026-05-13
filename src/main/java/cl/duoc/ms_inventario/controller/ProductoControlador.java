@@ -77,7 +77,7 @@ public class ProductoControlador {
         }
 
         // Solo el rol TIENDA puede ver el catalogo completo con inactivos
-        String rol = jwtUtil.extraerRol(token);
+        String rol = Jwt.extraerRol(token);
         if (!"TIENDA".equals(rol)) {
             return respuestaNoAutorizado("Solo los usuarios con rol TIENDA pueden ver el catalogo completo.");
         }
