@@ -34,7 +34,7 @@ public class ProductoServicio {
     @Autowired
     private RestTemplate restTemplate;
 
-    @Value("{ms.tiendas.url}")
+    @Value("${ms.tiendas.url}")
     private String urlMsTiendas;
 
 

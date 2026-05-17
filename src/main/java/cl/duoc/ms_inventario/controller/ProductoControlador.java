@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import cl.duoc.ms_inventario.dto.ActualizarProductoDto;
 import cl.duoc.ms_inventario.dto.AgregarProductoDto;
 import cl.duoc.ms_inventario.dto.ProductoRespuestaDto;
+import cl.duoc.ms_inventario.security.JwtUtil;
 import cl.duoc.ms_inventario.service.ProductoServicio;
 
 @RestController
@@ -35,6 +36,8 @@ public class ProductoControlador {
      //     return productoServicio.obtenerProductosPorTienda(tiendaId, authHeader);
      // }
 
+    @Autowired
+    private JwtUtil jwtUtil;
 @GetMapping("/tienda/{tiendaId}")
     public ResponseEntity<?> listarCatalogo(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
@@ -68,7 +71,7 @@ public class ProductoControlador {
      */
     @GetMapping("/tienda/{tiendaId}/todos")
     public ResponseEntity<?> listarTodosLosMios(
-            @RequestHeader(value = "Autorizacion", required = false) String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer tiendaId) {
 
         String token = validarHeader(authHeader);
@@ -77,7 +80,7 @@ public class ProductoControlador {
         }
 
         // Solo el rol TIENDA puede ver el catalogo completo con inactivos
-        String rol = Jwt.extraerRol(token);
+        String rol = jwtUtil.extraerRol(token);
         if (!"TIENDA".equals(rol)) {
             return respuestaNoAutorizado("Solo los usuarios con rol TIENDA pueden ver el catalogo completo.");
         }
@@ -107,7 +110,7 @@ public class ProductoControlador {
      */
     @GetMapping("/producto/{id}")
     public ResponseEntity<?> verProducto(
-            @RequestHeader(value = "Autorizacion", required = false) String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer id) {
 
         String token = validarHeader(authHeader);
@@ -188,7 +191,7 @@ public class ProductoControlador {
      */
     @PutMapping("/producto/{id}/tienda/{tiendaId}")
     public ResponseEntity<?> actualizarProducto(
-            @RequestHeader(value = "Autorizacion", required = false) String authHeader,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer id,
             @PathVariable Integer tiendaId,
             @RequestBody ActualizarProductoDto dto) {

@@ -28,7 +28,10 @@ public class Producto {
     private Integer id;
 
     @Column(nullable=false)
-    private String tiendaId;
+    private Integer tiendaId;
+
+    @Column(nullable=false)
+    private String nombre;
 
     @Column(nullable=false)
     private String descripcion;
