@@ -22,9 +22,13 @@ import cl.duoc.ms_inventario.dto.AgregarProductoDto;
 import cl.duoc.ms_inventario.dto.ProductoRespuestaDto;
 import cl.duoc.ms_inventario.security.JwtUtil;
 import cl.duoc.ms_inventario.service.ProductoServicio;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/productos")
+@Tag(name = "Productos", description = "Endpoints para gestionar los productos del catalogo")
+
 public class ProductoControlador {
 
     @Autowired
@@ -70,6 +74,9 @@ public class ProductoControlador {
      * Respuesta 200: lista de ProductoRespuestaDto (con activos e inactivos)
      */
     @GetMapping("/tienda/{tiendaId}/todos")
+    @Operation(summary = "Listar todos los productos de la tienda, incluidos los inactivos",
+               description = "Solo los usuarios con rol TIENDA pueden usar este endpoint." +
+               "Es la vista de gestion del dueno: ve todos sus productos incluyendo los que estan ocultos (activo=false).")
     public ResponseEntity<?> listarTodosLosMios(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer tiendaId) {
@@ -109,6 +116,8 @@ public class ProductoControlador {
      * GET http://localhost:8085/api/inventario/producto/1
      */
     @GetMapping("/producto/{id}")
+    @Operation(summary = "Ver los datos de un producto especifico",
+               description = "Requiere un token valido. Respuesta 404 si el producto no existe.")
     public ResponseEntity<?> verProducto(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer id) {
@@ -147,6 +156,9 @@ public class ProductoControlador {
      * Respuesta 201: el producto creado con sus datos completos
      */
     @PostMapping("/tienda/{tiendaId}")
+    @Operation(summary = "Agregar un producto al catalogo de la tienda",
+               description = "Solo los usuarios con rol TIENDA pueden agregar productos. " +
+               "Requiere un token valido. Respuesta 201 con el producto creado.")
     public ResponseEntity<?> agregarProducto(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer tiendaId,
@@ -190,6 +202,9 @@ public class ProductoControlador {
      * Respuesta 200: el producto con los datos actualizados
      */
     @PutMapping("/producto/{id}/tienda/{tiendaId}")
+    @Operation(summary = "Actualizar los datos de un producto existente",
+               description = "Solo los usuarios con rol TIENDA pueden actualizar productos. " +
+               "Requiere un token valido. Respuesta 200 con el producto actualizado.")
     public ResponseEntity<?> actualizarProducto(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer id,
@@ -234,6 +249,9 @@ public class ProductoControlador {
      * DELETE http://localhost:8085/api/inventario/producto/1/tienda/3
      */
     @DeleteMapping("/producto/{id}/tienda/{tiendaId}")
+    @Operation(summary = "Desactivar un producto (ocultar del catalogo sin borrarlo)",
+               description = "Solo los usuarios con rol TIENDA pueden desactivar productos. " +
+               "Requiere un token valido. Respuesta 200 con mensaje de confirmacion.")
     public ResponseEntity<?> desactivarProducto(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer id,
