@@ -27,7 +27,7 @@ ms:
     url: http://localhost:8084
   usuarios:
     url: http://localhost:8082
-  Intercambios:
+  intercambios:
     url: http://localhost:8088
 
 springdoc:
