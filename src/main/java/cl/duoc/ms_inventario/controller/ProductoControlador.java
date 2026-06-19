@@ -22,6 +22,7 @@ import cl.duoc.ms_inventario.dto.AgregarProductoDto;
 import cl.duoc.ms_inventario.dto.ProductoRespuestaDto;
 import cl.duoc.ms_inventario.security.JwtUtil;
 import cl.duoc.ms_inventario.service.ProductoServicio;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -162,7 +163,7 @@ public class ProductoControlador {
     public ResponseEntity<?> agregarProducto(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer tiendaId,
-            @RequestBody AgregarProductoDto dto) {
+            @Valid @RequestBody AgregarProductoDto dto) {
 
         String token = validarHeader(authHeader);
         if (token == null) {
@@ -209,7 +210,7 @@ public class ProductoControlador {
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer id,
             @PathVariable Integer tiendaId,
-            @RequestBody ActualizarProductoDto dto) {
+            @Valid @RequestBody ActualizarProductoDto dto) {
 
         String token = validarHeader(authHeader);
         if (token == null) {

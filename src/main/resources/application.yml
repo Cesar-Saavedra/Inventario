@@ -4,7 +4,7 @@ server:
 
 spring:
   application:
-    name: ms-inventarios
+    name: ms-inventario
   datasource:
     url: jdbc:mysql://localhost:3307/ms_inventarios?createDatabaseIfNotExist=true&serverTimezone=UTC
     username: root
