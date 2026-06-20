@@ -44,6 +44,7 @@ public class ProductoControlador {
     @Autowired
     private JwtUtil jwtUtil;
 @GetMapping("/tienda/{tiendaId}")
+    @Operation(summary = "Catálogo público de la tienda", description = "Devuelve los productos activos de una tienda visibles para cualquier usuario autenticado.")
     public ResponseEntity<?> listarCatalogo(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer tiendaId) {

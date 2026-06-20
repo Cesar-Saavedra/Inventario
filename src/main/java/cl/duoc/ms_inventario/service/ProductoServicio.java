@@ -2,40 +2,28 @@ package cl.duoc.ms_inventario.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
+import cl.duoc.ms_inventario.client.TiendaFeignClient;
 import cl.duoc.ms_inventario.dto.ActualizarProductoDto;
 import cl.duoc.ms_inventario.dto.AgregarProductoDto;
 import cl.duoc.ms_inventario.dto.ProductoRespuestaDto;
+import cl.duoc.ms_inventario.dto.TiendaResumenDTO;
 import cl.duoc.ms_inventario.model.Producto;
 import cl.duoc.ms_inventario.repository.ProductoRepositorio;
-import lombok.Data;
-
-
 
 
 @Service
-@Data
-
 public class ProductoServicio {
 
     @Autowired
     private ProductoRepositorio productoRepositorio;
-    
-    @Autowired
-    private RestTemplate restTemplate;
 
-    @Value("${ms.tiendas.url}")
-    private String urlMsTiendas;
+    // Cliente Feign para consultar ms-tiendas via Eureka (sin URL hardcodeada)
+    @Autowired
+    private TiendaFeignClient tiendaFeignClient;
 
 
     // =========================================================
@@ -58,7 +46,7 @@ public class ProductoServicio {
     public ProductoRespuestaDto agregarProducto(Integer tiendaId, AgregarProductoDto dto, String authHeader) {
 
         // Paso 1: consultar ms-tiendas para verificar que la tienda exista y este activa
-        Map<String, Object> datosTienda = consultarResumenTienda(tiendaId, authHeader);
+        TiendaResumenDTO datosTienda = consultarResumenTienda(tiendaId, authHeader);
         if (datosTienda == null) {
             throw new RuntimeException("No se encontro la tienda con id: " + tiendaId
                     + ". Verifica que ms-tiendas este corriendo.");
@@ -66,9 +54,8 @@ public class ProductoServicio {
 
         // Verificar que la tienda este en estado ACTIVA
         // No se pueden agregar productos a tiendas PENDIENTES o INACTIVAS
-        String estadoTienda = (String) datosTienda.get("estado");
-        if (!"ACTIVA".equals(estadoTienda)) {
-            throw new RuntimeException("La tienda no esta activa. Estado actual: " + estadoTienda
+        if (!"ACTIVA".equals(datosTienda.getEstado())) {
+            throw new RuntimeException("La tienda no esta activa. Estado actual: " + datosTienda.getEstado()
                 + ". Solo las tiendas ACTIVAS pueden tener productos en catalogo.");
         }
 
@@ -97,8 +84,7 @@ public class ProductoServicio {
         Producto guardado = productoRepositorio.save(nuevo);
 
         // Paso 4: armar respuesta incluyendo el nombre de la tienda
-        String nombreTienda = (String) datosTienda.get("nombre");
-        return construirRespuesta(guardado, nombreTienda);
+        return construirRespuesta(guardado, datosTienda.getNombre());
     }
 
     // =========================================================
@@ -115,10 +101,8 @@ public class ProductoServicio {
     public List<ProductoRespuestaDto> listarCatalogoPorTienda(Integer tiendaId, String authHeader) {
 
         // Consultar el nombre de la tienda para mostrarlo en cada producto
-        Map<String, Object> datosTienda = consultarResumenTienda(tiendaId, authHeader);
-        String nombreTienda = datosTienda != null
-                ? (String) datosTienda.get("nombre")
-                : "Tienda desconocida";
+        TiendaResumenDTO datosTienda = consultarResumenTienda(tiendaId, authHeader);
+        String nombreTienda = datosTienda != null ? datosTienda.getNombre() : "Tienda desconocida";
 
         // Traer solo los productos activos (los que ven los compradores)
         List<Producto> productos = productoRepositorio.findByTiendaIdAndActivo(tiendaId, true);
@@ -145,10 +129,8 @@ public class ProductoServicio {
      */
     public List<ProductoRespuestaDto> listarTodosPorTienda(Integer tiendaId, String authHeader) {
 
-        Map<String, Object> datosTienda = consultarResumenTienda(tiendaId, authHeader);
-        String nombreTienda = datosTienda != null
-                ? (String) datosTienda.get("nombre")
-                : "Tienda desconocida";
+        TiendaResumenDTO datosTienda = consultarResumenTienda(tiendaId, authHeader);
+        String nombreTienda = datosTienda != null ? datosTienda.getNombre() : "Tienda desconocida";
 
         // Traer todos sin filtrar por activo
         List<Producto> productos = productoRepositorio.findByTiendaId(tiendaId);
@@ -178,10 +160,8 @@ public class ProductoServicio {
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado con id: " + id));
 
         // Consultar el nombre de la tienda para la respuesta
-        Map<String, Object> datosTienda = consultarResumenTienda(producto.getTiendaId(), authHeader);
-        String nombreTienda = datosTienda != null
-                ? (String) datosTienda.get("nombre")
-                : "Tienda desconocida";
+        TiendaResumenDTO datosTienda = consultarResumenTienda(producto.getTiendaId(), authHeader);
+        String nombreTienda = datosTienda != null ? datosTienda.getNombre() : "Tienda desconocida";
 
         return construirRespuesta(producto, nombreTienda);
     }
@@ -232,10 +212,8 @@ public class ProductoServicio {
         Producto actualizado = productoRepositorio.save(producto);
 
         // Consultar nombre de la tienda para la respuesta
-        Map<String, Object> datosTienda = consultarResumenTienda(producto.getTiendaId(), authHeader);
-        String nombreTienda = datosTienda != null
-                ? (String) datosTienda.get("nombre")
-                : "Tienda desconocida";
+        TiendaResumenDTO datosTienda = consultarResumenTienda(producto.getTiendaId(), authHeader);
+        String nombreTienda = datosTienda != null ? datosTienda.getNombre() : "Tienda desconocida";
 
         return construirRespuesta(actualizado, nombreTienda);
     }
@@ -248,9 +226,6 @@ public class ProductoServicio {
      * Pone activo=false en el producto.
      * El producto deja de aparecer en el catalogo publico.
      * Sigue en la BD y el dueno lo puede ver desde su gestion.
-     *
-     * Se usa DELETE en la URL porque semanticamente estamos
-     * "eliminando" el producto del catalogo visible.
      *
      * @param id       id del producto
      * @param tiendaId id de la tienda (para verificar que le pertenece)
@@ -275,49 +250,18 @@ public class ProductoServicio {
     // =========================================================
 
     /*
-     * Llama a ms-tiendas para obtener el resumen de una tienda.
-     *
-     * Usa RestTemplate para hacer una peticion HTTP GET.
-     * Envia el token JWT en el header Authorization para que
-     * ms-tiendas sepa que somos un microservicio autorizado.
-     *
-     * Devuelve un Map con los datos de la tienda:
-     *   { "id": 3, "nombre": "Carta Magica TCG",
-     *     "horarioAtencion": "...", "estado": "ACTIVA" }
+     * Llama a ms-tiendas via Feign para obtener el resumen de una tienda.
+     * Feign usa Eureka para resolver "ms-tiendas" sin URL hardcodeada.
      *
      * Devuelve null si la tienda no existe o ms-tiendas no responde.
      *
      * @param tiendaId    id de la tienda a consultar
      * @param authHeader  header completo "Bearer eyJ..." para la peticion
      */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> consultarResumenTienda(Integer tiendaId, String authHeader) {
+    private TiendaResumenDTO consultarResumenTienda(Integer tiendaId, String authHeader) {
         try {
-            // Construir la URL completa del endpoint de resumen en ms-tiendas
-            String url = urlMsTiendas + "/api/tiendas/" + tiendaId + "/resumen";
-
-            // Crear los headers de la peticion HTTP con el token JWT
-            // Sin este header, ms-tiendas puede rechazar la peticion
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", authHeader); // "Bearer eyJ..."
-
-            // Crear la entidad HTTP (solo headers, sin body porque es GET)
-            HttpEntity<Void> peticion = new HttpEntity<>(headers);
-
-            // Hacer la peticion GET y mapear la respuesta JSON a un Map de Java
-            // Map.class le dice a RestTemplate que convierta el JSON a Map<String,Object>
-            ResponseEntity<Map> respuesta = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    peticion,
-                    Map.class
-            );
-
-            return respuesta.getBody();
-
+            return tiendaFeignClient.obtenerResumenTienda(tiendaId, authHeader);
         } catch (Exception e) {
-            // Si ms-tiendas no responde (no esta corriendo, timeout, etc.)
-            // devolvemos null para que el metodo que llama decida que hacer
             System.out.println("[ms-inventario] No se pudo consultar ms-tiendas para tienda "
                     + tiendaId + ": " + e.getMessage());
             return null;
@@ -326,8 +270,7 @@ public class ProductoServicio {
 
     /*
      * Convierte una entidad Producto al DTO de respuesta.
-     * Recibe el nombreTienda por parametro porque viene de ms-tiendas,
-     * no de esta BD.
+     * Recibe el nombreTienda por parametro porque viene de ms-tiendas.
      */
     private ProductoRespuestaDto construirRespuesta(Producto producto, String nombreTienda) {
         ProductoRespuestaDto respuesta = new ProductoRespuestaDto();
@@ -342,6 +285,4 @@ public class ProductoServicio {
         respuesta.setActivo(producto.getActivo());
         return respuesta;
     }
-
-    
 }

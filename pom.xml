@@ -29,6 +29,13 @@
             <scope>compile</scope>
         </dependency>
 
+        <!-- Feign: cliente HTTP declarativo para comunicacion entre microservicios -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <version>5.0.1</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
