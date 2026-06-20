@@ -177,9 +177,11 @@ public class ProductoControlador {
             return respuestaNoAutorizado("Solo los usuarios con rol TIENDA pueden agregar productos al catalogo.");
         }
 
+        Integer usuarioId = jwtUtil.extraerId(token);
+
         try {
             // Pasamos authHeader completo porque el servicio lo usa para llamar a ms-tiendas
-            ProductoRespuestaDto producto = productoServicio.agregarProducto(tiendaId, dto, authHeader);
+            ProductoRespuestaDto producto = productoServicio.agregarProducto(tiendaId, dto, usuarioId, authHeader);
             return ResponseEntity.status(HttpStatus.CREATED).body(producto);
         } catch (RuntimeException e) {
             return respuestaError(e.getMessage());
@@ -223,9 +225,11 @@ public class ProductoControlador {
             return respuestaNoAutorizado("Solo los usuarios con rol TIENDA pueden actualizar productos.");
         }
 
+        Integer usuarioId = jwtUtil.extraerId(token);
+
         try {
             ProductoRespuestaDto actualizado =
-                    productoServicio.actualizarProducto(id, dto, tiendaId, authHeader);
+                    productoServicio.actualizarProducto(id, dto, tiendaId, usuarioId, authHeader);
             return ResponseEntity.ok(actualizado);
         } catch (RuntimeException e) {
             return respuestaError(e.getMessage());
@@ -269,8 +273,10 @@ public class ProductoControlador {
             return respuestaNoAutorizado("Solo los usuarios con rol TIENDA pueden desactivar productos.");
         }
 
+        Integer usuarioId = jwtUtil.extraerId(token);
+
         try {
-            productoServicio.desactivarProducto(id, tiendaId);
+            productoServicio.desactivarProducto(id, tiendaId, usuarioId, authHeader);
             Map<String, String> respuesta = new HashMap<>();
             respuesta.put("mensaje", "Producto desactivado. Ya no aparece en el catalogo publico.");
             return ResponseEntity.ok(respuesta);

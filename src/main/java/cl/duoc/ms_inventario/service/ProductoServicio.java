@@ -43,7 +43,8 @@ public class ProductoServicio {
      * @param dto         datos del formulario (nombre, precio, stock, etc.)
      * @param authHeader  el header completo "Bearer eyJ..." para llamar a ms-tiendas
      */
-    public ProductoRespuestaDto agregarProducto(Integer tiendaId, AgregarProductoDto dto, String authHeader) {
+    public ProductoRespuestaDto agregarProducto(Integer tiendaId, AgregarProductoDto dto,
+                                                 Integer usuarioId, String authHeader) {
 
         // Paso 1: consultar ms-tiendas para verificar que la tienda exista y este activa
         TiendaResumenDTO datosTienda = consultarResumenTienda(tiendaId, authHeader);
@@ -57,6 +58,12 @@ public class ProductoServicio {
         if (!"ACTIVA".equals(datosTienda.getEstado())) {
             throw new RuntimeException("La tienda no esta activa. Estado actual: " + datosTienda.getEstado()
                 + ". Solo las tiendas ACTIVAS pueden tener productos en catalogo.");
+        }
+
+        // Verificar que la tienda de la URL realmente pertenezca al usuario autenticado
+        // (el id de la tienda NO es el mismo que el id del usuario dueno)
+        if (!esTiendaDelUsuario(tiendaId, usuarioId, authHeader)) {
+            throw new RuntimeException("No tienes permiso para agregar productos a esta tienda.");
         }
 
         // Paso 2: validar datos obligatorios del formulario
@@ -180,15 +187,21 @@ public class ProductoServicio {
      * @param authHeader  header para llamar a ms-tiendas
      */
     public ProductoRespuestaDto actualizarProducto(Integer id, ActualizarProductoDto dto,
-                                                    Integer tiendaId, String authHeader) {
+                                                    Integer tiendaId, Integer usuarioId, String authHeader) {
 
         // Buscar el producto en la BD
         Producto producto = productoRepositorio.findById(id)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado con id: " + id));
 
-        // Verificar que el producto pertenezca a la tienda del usuario
+        // Verificar que el producto pertenezca a la tienda indicada
         if (!producto.getTiendaId().equals(tiendaId)) {
             throw new RuntimeException("Este producto no pertenece a tu tienda.");
+        }
+
+        // Verificar que esa tienda realmente pertenezca al usuario autenticado
+        // (el id de la tienda NO es el mismo que el id del usuario dueno)
+        if (!esTiendaDelUsuario(tiendaId, usuarioId, authHeader)) {
+            throw new RuntimeException("No tienes permiso para modificar productos de esta tienda.");
         }
 
         // Actualizar solo los campos que llegaron con valor
@@ -230,14 +243,20 @@ public class ProductoServicio {
      * @param id       id del producto
      * @param tiendaId id de la tienda (para verificar que le pertenece)
      */
-    public void desactivarProducto(Integer id, Integer tiendaId) {
+    public void desactivarProducto(Integer id, Integer tiendaId, Integer usuarioId, String authHeader) {
 
         Producto producto = productoRepositorio.findById(id)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado con id: " + id));
 
-        // Verificar que el producto pertenece a la tienda del usuario autenticado
+        // Verificar que el producto pertenece a la tienda indicada
         if (!producto.getTiendaId().equals(tiendaId)) {
             throw new RuntimeException("Este producto no pertenece a tu tienda.");
+        }
+
+        // Verificar que esa tienda realmente pertenezca al usuario autenticado
+        // (el id de la tienda NO es el mismo que el id del usuario dueno)
+        if (!esTiendaDelUsuario(tiendaId, usuarioId, authHeader)) {
+            throw new RuntimeException("No tienes permiso para desactivar productos de esta tienda.");
         }
 
         // Desactivar sin borrar de la BD
@@ -265,6 +284,39 @@ public class ProductoServicio {
             System.out.println("[ms-inventario] No se pudo consultar ms-tiendas para tienda "
                     + tiendaId + ": " + e.getMessage());
             return null;
+        }
+    }
+
+    /*
+     * Verifica si una tienda (por su id real en ms-tiendas) pertenece
+     * al usuario autenticado. El id de la tienda es distinto del id
+     * del usuario dueno, por lo que hay que resolverlo consultando
+     * ms-tiendas en lugar de confiar en el tiendaId que llega por la URL.
+     *
+     * @param tiendaId   id de la tienda indicada en la URL
+     * @param usuarioId  id del usuario autenticado (viene del token)
+     * @param authHeader header completo "Bearer eyJ..." para la peticion
+     */
+    private boolean esTiendaDelUsuario(Integer tiendaId, Integer usuarioId, String authHeader) {
+        try {
+            List<TiendaResumenDTO> tiendasDelUsuario =
+                    tiendaFeignClient.obtenerTiendasPorDueno(usuarioId, authHeader);
+
+            if (tiendasDelUsuario == null) {
+                return false;
+            }
+
+            for (TiendaResumenDTO tienda : tiendasDelUsuario) {
+                if (tienda.getId() != null && tienda.getId().equals(tiendaId)) {
+                    return true;
+                }
+            }
+            return false;
+
+        } catch (Exception e) {
+            System.out.println("[ms-inventario] No se pudo verificar el dueno de la tienda "
+                    + tiendaId + ": " + e.getMessage());
+            return false;
         }
     }
 
