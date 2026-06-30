@@ -24,29 +24,34 @@ import cl.duoc.ms_inventario.security.JwtUtil;
 import cl.duoc.ms_inventario.service.ProductoServicio;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/inventario")
 @Tag(name = "Productos", description = "Endpoints para gestionar los productos del catalogo")
-
 public class ProductoControlador {
 
     @Autowired
     private ProductoServicio productoServicio;
 
-     // Aquí irían los endpoints, por ejemplo:
-     // @GetMapping("/tienda/{tiendaId}")
-     // public List<ProductoRespuestaDto> obtenerProductosPorTienda(@PathVariable Integer tiendaId, @RequestHeader("Authorization") String authHeader) {
-     //     return productoServicio.obtenerProductosPorTienda(tiendaId, authHeader);
-     // }
-
     @Autowired
     private JwtUtil jwtUtil;
-@GetMapping("/tienda/{tiendaId}")
+
+    @GetMapping("/tienda/{tiendaId}")
     @Operation(summary = "Catálogo público de la tienda", description = "Devuelve los productos activos de una tienda visibles para cualquier usuario autenticado.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Catálogo de productos activos de la tienda"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido o expirado")
+    })
     public ResponseEntity<?> listarCatalogo(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}'", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Parameter(description = "ID de la tienda", required = true, example = "3")
             @PathVariable Integer tiendaId) {
 
         // Validar que el token sea correcto antes de responder
@@ -62,7 +67,8 @@ public class ProductoControlador {
             return respuestaError(e.getMessage());
         }
     }
-// =========================================================
+
+    // =========================================================
     // GET /api/inventario/tienda/{tiendaId}/todos
     // Ver TODOS los productos de la tienda, incluidos los inactivos
     // =========================================================
@@ -79,8 +85,14 @@ public class ProductoControlador {
     @Operation(summary = "Listar todos los productos de la tienda, incluidos los inactivos",
                description = "Solo los usuarios con rol TIENDA pueden usar este endpoint." +
                "Es la vista de gestion del dueno: ve todos sus productos incluyendo los que estan ocultos (activo=false).")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Catálogo completo de la tienda (activos e inactivos)"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido, o rol distinto de TIENDA")
+    })
     public ResponseEntity<?> listarTodosLosMios(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}', debe pertenecer a un usuario con rol TIENDA", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Parameter(description = "ID de la tienda", required = true, example = "3")
             @PathVariable Integer tiendaId) {
 
         String token = validarHeader(authHeader);
@@ -120,8 +132,15 @@ public class ProductoControlador {
     @GetMapping("/producto/{id}")
     @Operation(summary = "Ver los datos de un producto especifico",
                description = "Requiere un token valido. Respuesta 404 si el producto no existe.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Producto encontrado"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido o expirado"),
+            @ApiResponse(responseCode = "404", description = "El producto no existe")
+    })
     public ResponseEntity<?> verProducto(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}'", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Parameter(description = "ID del producto", required = true, example = "1")
             @PathVariable Integer id) {
 
         String token = validarHeader(authHeader);
@@ -142,28 +161,41 @@ public class ProductoControlador {
     // POST /api/inventario/tienda/{tiendaId}
     // Agregar un producto al catalogo de la tienda
     // =========================================================
-    /*
-     * Header: Authorization: Bearer {token}
-     * Path param: tiendaId = id de la tienda duena del producto
-     * Body JSON:
-     * {
-     *   "nombre": "Sobre Charizard ex - Pokemon SV",
-     *   "descripcion": "Sobre de 10 cartas de la expansion Scarlet & Violet",
-     *   "precio": 5990,
-     *   "stock": 100,
-     *   "categoria": "SOBRE"
-     * }
-     *
-     * Solo los usuarios con rol TIENDA pueden agregar productos.
-     * Respuesta 201: el producto creado con sus datos completos
-     */
     @PostMapping("/tienda/{tiendaId}")
     @Operation(summary = "Agregar un producto al catalogo de la tienda",
                description = "Solo los usuarios con rol TIENDA pueden agregar productos. " +
                "Requiere un token valido. Respuesta 201 con el producto creado.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Producto creado", content = @Content(
+                    examples = @ExampleObject(name = "ProductoCreado", value = """
+                            {
+                              "id": 1,
+                              "nombre": "Sobre Charizard ex - Pokemon SV",
+                              "descripcion": "Sobre de 10 cartas de la expansion Scarlet & Violet",
+                              "precio": 5990,
+                              "stock": 100,
+                              "categoria": "SOBRE",
+                              "activo": true
+                            }
+                            """))),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos o la tienda no está ACTIVA"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido, o rol distinto de TIENDA")
+    })
     public ResponseEntity<?> agregarProducto(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}', debe pertenecer a un usuario con rol TIENDA", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Parameter(description = "ID de la tienda dueña del producto", required = true, example = "3")
             @PathVariable Integer tiendaId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Datos del producto a agregar", required = true,
+                    content = @Content(examples = @ExampleObject(value = """
+                            {
+                              "nombre": "Sobre Charizard ex - Pokemon SV",
+                              "descripcion": "Sobre de 10 cartas de la expansion Scarlet & Violet",
+                              "precio": 5990,
+                              "stock": 100,
+                              "categoria": "SOBRE"
+                            }
+                            """)))
             @Valid @RequestBody AgregarProductoDto dto) {
 
         String token = validarHeader(authHeader);
@@ -192,27 +224,29 @@ public class ProductoControlador {
     // PUT /api/inventario/producto/{id}/tienda/{tiendaId}
     // Actualizar los datos de un producto existente
     // =========================================================
-    /*
-     * Header: Authorization: Bearer {token}
-     * Path params:
-     *   id       = id del producto a actualizar
-     *   tiendaId = id de la tienda (para verificar que el producto le pertenece)
-     * Body JSON: solo los campos que quieres cambiar
-     *
-     * Ejemplo en Postman:
-     * PUT http://localhost:8085/api/inventario/producto/1/tienda/3
-     * Body: { "precio": 4990, "stock": 75 }
-     *
-     * Respuesta 200: el producto con los datos actualizados
-     */
     @PutMapping("/producto/{id}/tienda/{tiendaId}")
     @Operation(summary = "Actualizar los datos de un producto existente",
                description = "Solo los usuarios con rol TIENDA pueden actualizar productos. " +
                "Requiere un token valido. Respuesta 200 con el producto actualizado.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Producto actualizado correctamente"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos o el producto no pertenece a la tienda indicada"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido, o rol distinto de TIENDA")
+    })
     public ResponseEntity<?> actualizarProducto(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}', debe pertenecer a un usuario con rol TIENDA", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Parameter(description = "ID del producto a actualizar", required = true, example = "1")
             @PathVariable Integer id,
+            @Parameter(description = "ID de la tienda (para verificar que el producto le pertenece)", required = true, example = "3")
             @PathVariable Integer tiendaId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Solo los campos que se desean cambiar", required = true,
+                    content = @Content(examples = @ExampleObject(value = """
+                            {
+                              "precio": 4990,
+                              "stock": 75
+                            }
+                            """)))
             @Valid @RequestBody ActualizarProductoDto dto) {
 
         String token = validarHeader(authHeader);
@@ -240,27 +274,21 @@ public class ProductoControlador {
     // DELETE /api/inventario/producto/{id}/tienda/{tiendaId}
     // Desactivar un producto (ocultar del catalogo sin borrarlo)
     // =========================================================
-    /*
-     * Header: Authorization: Bearer {token}
-     * Path params:
-     *   id       = id del producto a desactivar
-     *   tiendaId = id de la tienda (para verificar que le pertenece)
-     *
-     * El producto queda con activo=false: sigue en la BD
-     * pero ya no aparece en el catalogo publico.
-     *
-     * Respuesta 200: mensaje de confirmacion
-     *
-     * Ejemplo en Postman:
-     * DELETE http://localhost:8085/api/inventario/producto/1/tienda/3
-     */
     @DeleteMapping("/producto/{id}/tienda/{tiendaId}")
     @Operation(summary = "Desactivar un producto (ocultar del catalogo sin borrarlo)",
                description = "Solo los usuarios con rol TIENDA pueden desactivar productos. " +
                "Requiere un token valido. Respuesta 200 con mensaje de confirmacion.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Producto desactivado correctamente"),
+            @ApiResponse(responseCode = "400", description = "El producto no pertenece a la tienda indicada u otro error de negocio"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido, o rol distinto de TIENDA")
+    })
     public ResponseEntity<?> desactivarProducto(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}', debe pertenecer a un usuario con rol TIENDA", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Parameter(description = "ID del producto a desactivar", required = true, example = "1")
             @PathVariable Integer id,
+            @Parameter(description = "ID de la tienda (para verificar que el producto le pertenece)", required = true, example = "3")
             @PathVariable Integer tiendaId) {
 
         String token = validarHeader(authHeader);
