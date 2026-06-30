@@ -10,7 +10,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,6 +31,7 @@ import cl.duoc.ms_inventario.service.ProductoServicio;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @WebMvcTest(ProductoControlador.class)
+@AutoConfigureMockMvc(addFilters = false)
 public class ProductoControladorTest {
 
     @Autowired
@@ -52,12 +54,12 @@ public class ProductoControladorTest {
     }
 
     // =====================================================================
-    // GET /api/productos/tienda/{tiendaId}
+    // GET /api/inventario/tienda/{tiendaId}
     // =====================================================================
 
     @Test
     void listarCatalogo_sinToken_retorna401() throws Exception {
-        mockMvc.perform(get("/api/productos/tienda/3"))
+        mockMvc.perform(get("/api/inventario/tienda/3"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -67,18 +69,18 @@ public class ProductoControladorTest {
         when(jwtUtil.esTokenValido("token-bueno")).thenReturn(true);
         when(productoServicio.listarCatalogoPorTienda(eq(3), anyString())).thenReturn(Arrays.asList(productoEjemplo));
 
-        mockMvc.perform(get("/api/productos/tienda/3").header("Authorization", "Bearer token-bueno"))
+        mockMvc.perform(get("/api/inventario/tienda/3").header("Authorization", "Bearer token-bueno"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].nombre").value("Sobre Charizard ex"));
     }
 
     // =====================================================================
-    // GET /api/productos/tienda/{tiendaId}/todos
+    // GET /api/inventario/tienda/{tiendaId}/todos
     // =====================================================================
 
     @Test
     void listarTodosLosMios_sinToken_retorna401() throws Exception {
-        mockMvc.perform(get("/api/productos/tienda/3/todos"))
+        mockMvc.perform(get("/api/inventario/tienda/3/todos"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -88,7 +90,7 @@ public class ProductoControladorTest {
         when(jwtUtil.esTokenValido("token-jugador")).thenReturn(true);
         when(jwtUtil.extraerRol("token-jugador")).thenReturn("JUGADOR");
 
-        mockMvc.perform(get("/api/productos/tienda/3/todos").header("Authorization", "Bearer token-jugador"))
+        mockMvc.perform(get("/api/inventario/tienda/3/todos").header("Authorization", "Bearer token-jugador"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -99,17 +101,17 @@ public class ProductoControladorTest {
         when(jwtUtil.extraerRol("token-tienda")).thenReturn("TIENDA");
         when(productoServicio.listarTodosPorTienda(eq(3), anyString())).thenReturn(Arrays.asList(productoEjemplo));
 
-        mockMvc.perform(get("/api/productos/tienda/3/todos").header("Authorization", "Bearer token-tienda"))
+        mockMvc.perform(get("/api/inventario/tienda/3/todos").header("Authorization", "Bearer token-tienda"))
                 .andExpect(status().isOk());
     }
 
     // =====================================================================
-    // GET /api/productos/producto/{id}
+    // GET /api/inventario/producto/{id}
     // =====================================================================
 
     @Test
     void verProducto_sinToken_retorna401() throws Exception {
-        mockMvc.perform(get("/api/productos/producto/1"))
+        mockMvc.perform(get("/api/inventario/producto/1"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -119,7 +121,7 @@ public class ProductoControladorTest {
         when(jwtUtil.esTokenValido("token-bueno")).thenReturn(true);
         when(productoServicio.obtenerPorId(1, "Bearer token-bueno")).thenReturn(productoEjemplo);
 
-        mockMvc.perform(get("/api/productos/producto/1").header("Authorization", "Bearer token-bueno"))
+        mockMvc.perform(get("/api/inventario/producto/1").header("Authorization", "Bearer token-bueno"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1));
     }
@@ -131,12 +133,12 @@ public class ProductoControladorTest {
         when(productoServicio.obtenerPorId(99, "Bearer token-bueno"))
                 .thenThrow(new RuntimeException("Producto no encontrado con id: 99"));
 
-        mockMvc.perform(get("/api/productos/producto/99").header("Authorization", "Bearer token-bueno"))
+        mockMvc.perform(get("/api/inventario/producto/99").header("Authorization", "Bearer token-bueno"))
                 .andExpect(status().isNotFound());
     }
 
     // =====================================================================
-    // POST /api/productos/tienda/{tiendaId}
+    // POST /api/inventario/tienda/{tiendaId}
     // =====================================================================
 
     @Test
@@ -147,7 +149,7 @@ public class ProductoControladorTest {
         dto.setStock(100);
         dto.setCategoria(CategoriaProducto.SOBRE);
 
-        mockMvc.perform(post("/api/productos/tienda/3")
+        mockMvc.perform(post("/api/inventario/tienda/3")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isUnauthorized());
@@ -165,7 +167,7 @@ public class ProductoControladorTest {
         when(jwtUtil.esTokenValido("token-jugador")).thenReturn(true);
         when(jwtUtil.extraerRol("token-jugador")).thenReturn("JUGADOR");
 
-        mockMvc.perform(post("/api/productos/tienda/3")
+        mockMvc.perform(post("/api/inventario/tienda/3")
                         .header("Authorization", "Bearer token-jugador")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
@@ -187,7 +189,7 @@ public class ProductoControladorTest {
         when(productoServicio.agregarProducto(eq(3), any(AgregarProductoDto.class), eq(5), anyString()))
                 .thenReturn(productoEjemplo);
 
-        mockMvc.perform(post("/api/productos/tienda/3")
+        mockMvc.perform(post("/api/inventario/tienda/3")
                         .header("Authorization", "Bearer token-tienda")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
@@ -210,7 +212,7 @@ public class ProductoControladorTest {
         when(productoServicio.agregarProducto(eq(3), any(AgregarProductoDto.class), eq(5), anyString()))
                 .thenThrow(new RuntimeException("No tienes permiso para agregar productos a esta tienda."));
 
-        mockMvc.perform(post("/api/productos/tienda/3")
+        mockMvc.perform(post("/api/inventario/tienda/3")
                         .header("Authorization", "Bearer token-tienda")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
@@ -218,7 +220,7 @@ public class ProductoControladorTest {
     }
 
     // =====================================================================
-    // PUT /api/productos/producto/{id}/tienda/{tiendaId}
+    // PUT /api/inventario/producto/{id}/tienda/{tiendaId}
     // =====================================================================
 
     @Test
@@ -226,7 +228,7 @@ public class ProductoControladorTest {
         ActualizarProductoDto dto = new ActualizarProductoDto();
         dto.setPrecio(new BigDecimal("4990"));
 
-        mockMvc.perform(put("/api/productos/producto/1/tienda/3")
+        mockMvc.perform(put("/api/inventario/producto/1/tienda/3")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isUnauthorized());
@@ -244,7 +246,7 @@ public class ProductoControladorTest {
         when(productoServicio.actualizarProducto(eq(1), any(ActualizarProductoDto.class), eq(3), eq(5), anyString()))
                 .thenReturn(productoEjemplo);
 
-        mockMvc.perform(put("/api/productos/producto/1/tienda/3")
+        mockMvc.perform(put("/api/inventario/producto/1/tienda/3")
                         .header("Authorization", "Bearer token-tienda")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
@@ -252,12 +254,12 @@ public class ProductoControladorTest {
     }
 
     // =====================================================================
-    // DELETE /api/productos/producto/{id}/tienda/{tiendaId}
+    // DELETE /api/inventario/producto/{id}/tienda/{tiendaId}
     // =====================================================================
 
     @Test
     void desactivarProducto_sinToken_retorna401() throws Exception {
-        mockMvc.perform(delete("/api/productos/producto/1/tienda/3"))
+        mockMvc.perform(delete("/api/inventario/producto/1/tienda/3"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -268,7 +270,7 @@ public class ProductoControladorTest {
         when(jwtUtil.extraerRol("token-tienda")).thenReturn("TIENDA");
         when(jwtUtil.extraerId("token-tienda")).thenReturn(5);
 
-        mockMvc.perform(delete("/api/productos/producto/1/tienda/3").header("Authorization", "Bearer token-tienda"))
+        mockMvc.perform(delete("/api/inventario/producto/1/tienda/3").header("Authorization", "Bearer token-tienda"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value("Producto desactivado. Ya no aparece en el catalogo publico."));
     }
